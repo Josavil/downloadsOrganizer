@@ -3,7 +3,7 @@ import os
 import shutil
 
 # Base path for Downloads folder
-ruta = "/home/josavi/Downloads/"
+ruta = "/home/USERNAME/Downloads/"
 
 # Define folder types and their corresponding extensions
 extensiones = {
