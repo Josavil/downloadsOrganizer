@@ -2,6 +2,8 @@
 
 A simple Python script that organizes your Downloads folder by moving files into subfolders based on their extension — keeps things tidy without any manual sorting.
 
+The main script is `organizer.py`.
+
 ## What it does
 
 - Scans your Downloads folder (or any folder you point it to)
