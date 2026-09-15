@@ -21,6 +21,7 @@ The main script is `organizer.py`.
     ```bash
     sudo apt install python3-tk        # Debian/Ubuntu
     sudo dnf install python3-tkinter   # Fedora
+    sudo pacman -S tk                  # Arch/Manjaro
     ```
   - If `tkinter` isn't available, the script still runs fine — it just skips the popup and prints a summary to the terminal instead.
 
