@@ -9,10 +9,12 @@ import os
 import shutil
 import argparse
 from pathlib import Path
+from collections import defaultdict
 
 try:
     import tkinter as tk
     from tkinter import messagebox
+    from tkinter import ttk
     TKINTER_AVAILABLE = True
 except ImportError:
     TKINTER_AVAILABLE = False
@@ -92,10 +94,11 @@ def organize_files(ruta: Path, dry_run: bool = False, verbose: bool = True):
     """Move files to their corresponding folders based on extension."""
     if not ruta.exists():
         print(f"Downloads folder not found: {ruta}")
-        return
+        return {}, 0
 
     moved_count = 0
     skipped_count = 0
+    folder_stats = defaultdict(int)  # Track files per folder
 
     try:
         for archivo_path in ruta.iterdir():
@@ -129,12 +132,14 @@ def organize_files(ruta: Path, dry_run: bool = False, verbose: bool = True):
 
             if dry_run:
                 print(f"[DRY RUN] Would move: {archivo} -> {destino_folder}/{destino_path.name}")
+                folder_stats[destino_folder] += 1
                 moved_count += 1
                 continue
 
             try:
                 shutil.move(str(archivo_path), str(destino_path))
                 print(f"Moved: {archivo} -> {destino_folder}/{destino_path.name}")
+                folder_stats[destino_folder] += 1
                 moved_count += 1
             except Exception as e:
                 print(f"Error moving {archivo}: {e}")
@@ -145,29 +150,82 @@ def organize_files(ruta: Path, dry_run: bool = False, verbose: bool = True):
     print(f"\nTotal files moved: {moved_count}")
     print(f"Total files skipped: {skipped_count}")
 
-    return moved_count, skipped_count
+    return dict(folder_stats), skipped_count
 
 
-def show_completion_popup(moved_count: int, skipped_count: int, dry_run: bool):
-    """Show a small window announcing that the task has finished."""
+def show_completion_popup(moved_count: int, skipped_count: int, dry_run: bool, folder_stats: dict):
+    """Show a window with expandable folder breakdown."""
     if not TKINTER_AVAILABLE:
         print("(tkinter not available, skipping popup notification)")
         return
 
     title = "Downloads Organizer"
     mode = " (dry run)" if dry_run else ""
-    message = (
-        f"Organization complete{mode}!\n\n"
-        f"Files moved: {moved_count}\n"
-        f"Files skipped: {skipped_count}"
-    )
 
     try:
         root = tk.Tk()
-        root.withdraw()  # hide the empty root window, only show the messagebox
+        root.title(title)
+        root.geometry("450x400")
+        root.resizable(True, True)
         root.attributes("-topmost", True)
-        messagebox.showinfo(title, message, parent=root)
-        root.destroy()
+
+        # Main frame
+        main_frame = ttk.Frame(root, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Header
+        header = ttk.Label(
+            main_frame,
+            text=f"Organization complete{mode}!",
+            font=("Arial", 12, "bold")
+        )
+        header.pack(pady=(0, 10))
+
+        # Summary stats
+        summary_frame = ttk.LabelFrame(main_frame, text="Summary", padding="10")
+        summary_frame.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(summary_frame, text=f"Files moved: {moved_count}").pack(anchor=tk.W)
+        ttk.Label(summary_frame, text=f"Files skipped: {skipped_count}").pack(anchor=tk.W)
+
+        # Folder breakdown with Treeview
+        breakdown_frame = ttk.LabelFrame(main_frame, text="Files per folder", padding="10")
+        breakdown_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+
+        # Create Treeview with scrollbar
+        tree_scroll = ttk.Scrollbar(breakdown_frame)
+        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        tree = ttk.Treeview(
+            breakdown_frame,
+            columns=("count",),
+            height=12,
+            yscrollcommand=tree_scroll.set
+        )
+        tree_scroll.config(command=tree.yview)
+
+        tree.heading("#0", text="Folder", anchor=tk.W)
+        tree.heading("count", text="Files", anchor=tk.CENTER)
+        tree.column("#0", width=300)
+        tree.column("count", width=80)
+
+        # Add folder data to tree
+        if folder_stats:
+            for folder_name in sorted(folder_stats.keys()):
+                count = folder_stats[folder_name]
+                tree.insert("", tk.END, text=folder_name, values=(count,))
+        else:
+            tree.insert("", tk.END, text="No files moved", values=("—",))
+
+        tree.pack(fill=tk.BOTH, expand=True)
+
+        # Close button
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        ttk.Button(button_frame, text="Close", command=root.destroy).pack(side=tk.RIGHT)
+
+        root.mainloop()
+
     except tk.TclError as e:
         # Happens if there's no display available (e.g. running over SSH
         # without X forwarding, or in a cron job with no GUI session)
@@ -210,12 +268,15 @@ def main():
         print("Mode: DRY RUN (no files will actually be moved)\n")
 
     create_folders(ruta, dry_run=args.dry_run)
-    moved_count, skipped_count = organize_files(ruta, dry_run=args.dry_run, verbose=not args.quiet)
+    folder_stats, skipped_count = organize_files(ruta, dry_run=args.dry_run, verbose=not args.quiet)
+
+    # Extract moved_count from folder_stats
+    moved_count = sum(folder_stats.values())
 
     print("Organization complete!")
 
     if not args.no_notify:
-        show_completion_popup(moved_count, skipped_count, args.dry_run)
+        show_completion_popup(moved_count, skipped_count, args.dry_run, folder_stats)
 
 
 if __name__ == "__main__":
