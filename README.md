@@ -29,13 +29,13 @@ Clone the repo and run the script directly:
 ```bash
 git clone https://github.com/Josavil/downloadsOrganizer.git
 cd downloadsOrganizer
-python3 downloads_organizer.py
+python3 organizer.py
 ```
 
 By default it organizes `~/Downloads`. You can point it at a different folder:
 
 ```bash
-python3 downloads_organizer.py --path /path/to/folder
+python3 organizer.py --path /path/to/folder
 ```
 
 ### Options
@@ -50,7 +50,7 @@ python3 downloads_organizer.py --path /path/to/folder
 **Tip:** run with `--dry-run` first to see what the script *would* do before letting it touch your real files.
 
 ```bash
-python3 downloads_organizer.py --dry-run
+python3 organizer.py --dry-run
 ```
 
 ## File type mapping
