@@ -58,20 +58,20 @@ python3 organizer.py --dry-run
 
 ## File type mapping
 
-| Folder          | Extensions                          |
-|------------------|--------------------------------------|
-| `00-Zip`         | `.zip` `.rar` `.7z`                  |
-| `01-txt`         | `.txt`                               |
-| `02-PDFs`        | `.pdf`                               |
-| `03-PowerPoint`  | `.ppt` `.pptx`                       |
-| `04-Word`        | `.doc` `.docx`                       |
-| `05-Excel`       | `.xls` `.xlsx`                       |
-| `06-Imagenes`    | `.jpg` `.jpeg` `.png` `.gif` `.bmp`  |
-| `07-Videos`      | `.mp4` `.avi` `.mkv` `.mov`          |
-| `08-Audio`       | `.mp3` `.wav` `.flac`                |
-| `09-Python`      | `.py`                                |
-| `10-SQL`         | `.sql`                               |
-| `11-JavaScript`  | `.js`                                |
+| Folder          | Extensions                             |
+|------------------|----------------------------------------|
+| `00-Zip`         | `.zip` `.rar` `.7z` `.gz` `.tar`       |
+| `01-txt`         | `.txt`                                 |
+| `02-PDFs`        | `.pdf`                                 |
+| `03-PowerPoint`  | `.ppt` `.pptx`                         |
+| `04-Word`        | `.doc` `.docx`                         |
+| `05-Excel`       | `.xls` `.xlsx`                         |
+| `06-Imagenes`    | `.jpg` `.jpeg` `.png` `.gif` `.bmp`    |
+| `07-Videos`      | `.mp4` `.avi` `.mkv` `.mov`            |
+| `08-Audio`       | `.mp3` `.wav` `.flac`                  |
+| `09-Python`      | `.py`                                  |
+| `10-SQL`         | `.sql`                                 |
+| `11-JavaScript`  | `.js`                                  |
 
 Files with an extension not listed here are left alone and reported as "skipped." Hidden files (dotfiles like `.bashrc`) are also ignored.
 
@@ -79,8 +79,8 @@ Files with an extension not listed here are left alone and reported as "skipped.
 
 - The script only moves files sitting directly in the target folder — it doesn't touch files inside subfolders (including the category folders it creates).
 - Running it multiple times is safe: existing category folders won't be recreated, and naming collisions are handled by appending `(1)`, `(2)`, etc. to the filename instead of overwriting.
-- Multi-part extensions (e.g. `.tar.gz`, `.tar.bz2`) are treated using the final suffix only (e.g., `file.tar.gz` is seen as `.gz`). Since `.gz` is not mapped to any folder, these files will be skipped. If you want to handle these, either:
-  - Add `.gz` → a folder mapping in the script, or
+- Multi-part extensions (e.g. `.tar.gz`, `.tar.bz2`) are treated using the final suffix only (e.g., `file.tar.gz` is seen as `.gz`). Since `.gz` and `.tar` are now mapped to `00-Zip`, these files will be organized correctly. If you encounter other multi-part extensions not covered (like `.tar.bz2`), you can:
+  - Add the missing extension to the `EXTENSIONES` mapping in the script, or
   - Modify the script to detect these patterns explicitly.
 
 ## License
