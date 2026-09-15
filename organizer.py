@@ -13,7 +13,6 @@ from collections import defaultdict
 
 try:
     import tkinter as tk
-    from tkinter import messagebox
     from tkinter import ttk
     TKINTER_AVAILABLE = True
 except ImportError:
@@ -104,8 +103,8 @@ def organize_files(ruta: Path, dry_run: bool = False, verbose: bool = True):
         for archivo_path in ruta.iterdir():
             archivo = archivo_path.name
 
-            # Skip directories (including the category folders we just made)
-            if archivo_path.is_dir():
+            # Process only regular files; skip directories, symlinks to directories, etc.
+            if not archivo_path.is_file():
                 continue
 
             # Skip hidden/dotfiles (e.g. .bashrc, .DS_Store) to avoid
@@ -153,77 +152,84 @@ def organize_files(ruta: Path, dry_run: bool = False, verbose: bool = True):
     return dict(folder_stats), skipped_count
 
 
-def show_completion_popup(moved_count, skipped_count, dry_run, folder_stats):
+def show_completion_popup(moved_count: int, skipped_count: int, dry_run: bool, folder_stats: dict):
+    """Show a window with expandable folder breakdown."""
+    if not TKINTER_AVAILABLE:
+        print("(tkinter not available, skipping popup notification)")
+        return
+
+    title = "Downloads Organizer"
+    mode = " (dry run)" if dry_run else ""
+
     try:
         root = tk.Tk()
-        title_suffix = " (Dry Run)" if dry_run else ""
-        root.title(f"Downloads Organizer{title_suffix}")
-        root.geometry("450x350")
-        root.minsize(400, 300)
+        root.title(title)
+        root.geometry("450x400")
+        root.resizable(True, True)
+        root.attributes("-topmost", True)
 
-        # Apply a modern cross-platform theme ('clam')
-        style = ttk.Style()
-        if "clam" in style.theme_names():
-            style.theme_use("clam")
-
-        # Custom styling for a clean, flat look
-        style.configure(".", font=("Segoe UI", 10))
-        style.configure("Heading.TLabel", font=("Segoe UI", 12, "bold"))
-        style.configure("Treeview", rowheight=26, fieldbackground="#ffffff", background="#ffffff")
-        style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"), background="#f1f3f5")
-        style.configure("TButton", padding=6)
-
-        # Main container with comfortable padding
-        main_frame = ttk.Frame(root, padding="20 20 20 20")
+        # Main frame
+        main_frame = ttk.Frame(root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Summary header label
-        status_text = f"Successfully organized {moved_count} file(s)."
-        if dry_run:
-            status_text = f"[DRY RUN] Would organize {moved_count} file(s)."
-        
-        header_label = ttk.Label(main_frame, text=status_text, style="Heading.TLabel")
-        header_label.pack(anchor=tk.W, pady=(0, 10))
+        # Header
+        header = ttk.Label(
+            main_frame,
+            text=f"Organization complete{mode}!",
+            font=("Arial", 12, "bold")
+        )
+        header.pack(pady=(0, 10))
 
-        # Treeview with Scrollbar inside a clean container
-        tree_frame = ttk.Frame(main_frame)
-        tree_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        # Summary stats
+        summary_frame = ttk.LabelFrame(main_frame, text="Summary", padding="10")
+        summary_frame.pack(fill=tk.X, pady=(0, 10))
 
-        tree = ttk.Treeview(tree_frame, columns=("count",), show="headings", selectmode="none")
-        tree_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
-        tree.config(yscrollcommand=tree_scroll.set)
+        ttk.Label(summary_frame, text=f"Files moved: {moved_count}").pack(anchor=tk.W)
+        ttk.Label(summary_frame, text=f"Files skipped: {skipped_count}").pack(anchor=tk.W)
 
-        # Configure columns and headings
-        tree.heading("#1", text="Folder", anchor=tk.W)
-        tree.heading("count", text="Files Moved", anchor=tk.CENTER)
-        
-        # Give proportions to columns (Treeview columns use identifiers)
-        tree.column("#1", width=280, anchor=tk.W)
-        tree.column("count", width=90, anchor=tk.CENTER)
+        # Folder breakdown with Treeview
+        breakdown_frame = ttk.LabelFrame(main_frame, text="Files per folder", padding="10")
+        breakdown_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+
+        # Create Treeview with scrollbar
+        tree_scroll = ttk.Scrollbar(breakdown_frame)
+        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        tree = ttk.Treeview(
+            breakdown_frame,
+            columns=("count",),
+            height=12,
+            yscrollcommand=tree_scroll.set
+        )
+        tree_scroll.config(command=tree.yview)
+
+        tree.heading("#0", text="Folder", anchor=tk.W)
+        tree.heading("count", text="Files", anchor=tk.CENTER)
+        tree.column("#0", width=300)
+        tree.column("count", width=80)
 
         # Add folder data to tree
         if folder_stats:
             for folder_name in sorted(folder_stats.keys()):
                 count = folder_stats[folder_name]
-                tree.insert("", tk.END, values=(folder_name, count))
+                tree.insert("", tk.END, text=folder_name, values=(count,))
         else:
-            tree.insert("", tk.END, values=("No files moved", "—"))
+            tree.insert("", tk.END, text="No files moved", values=("—",))
 
-        # Pack tree and scrollbar neatly
-        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        tree.pack(fill=tk.BOTH, expand=True)
 
-        # Close button container
+        # Close button
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X)
-        
-        close_button = ttk.Button(button_frame, text="Close", command=root.destroy)
-        close_button.pack(side=tk.RIGHT)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        ttk.Button(button_frame, text="Close", command=root.destroy).pack(side=tk.RIGHT)
 
         root.mainloop()
 
     except tk.TclError as e:
+        # Happens if there's no display available (e.g. running over SSH
+        # without X forwarding, or in a cron job with no GUI session)
         print(f"(couldn't show popup, no display available: {e})")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Organize a Downloads folder by file extension.")
