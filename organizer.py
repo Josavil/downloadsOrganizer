@@ -40,6 +40,8 @@ EXTENSIONES = {
     ".zip": "00-Zip",
     ".rar": "00-Zip",
     ".7z": "00-Zip",
+    ".gz": "00-Zip",
+    ".tar": "00-Zip",
     ".pdf": "02-PDFs",
     ".sql": "10-SQL",
     ".js": "11-JavaScript",
